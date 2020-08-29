@@ -1,3 +1,13 @@
+/**
+ * PanDownload 网页复刻版，JS函数文件
+ *
+ * 许多函数来源于github，详见项目里的Thanks
+ *
+ * @author Yuan_Tuo <yuantuo666@gmail.com>
+ * @link https://imwcr.cn/
+ * @link https://space.bilibili.com/88197958
+ *
+ */
 function validateForm() {
 	var link = document.forms["form1"]["surl"].value;
 	if (link == null || link === "") { document.forms["form1"]["surl"].focus(); return false; }
@@ -17,10 +27,10 @@ function validateForm() {
 	document.forms["form1"]["surl"].value = surl;
 	return true;
 }
-function dl(fs_id, timestamp, sign, randsk, share_id, uk) {
+function dl(fs_id, timestamp, sign, randsk, share_id, uk, bdstoken, filesize) {
 	var form = $('<form method="post" action="?download" target="_blank"></form>');
 	form.append(`<input type="hidden" name="fs_id" value="${fs_id}"/><input type="hidden" name="time" value="${timestamp}"/><input type="hidden" name="sign" value="${sign}"/>
-		<input type="hidden" name="randsk" value="${randsk}"/><input type="hidden" name="share_id" value="${share_id}"/><input type="hidden" name="uk" value="${uk}"/>`);
+		<input type="hidden" name="randsk" value="${randsk}"/><input type="hidden" name="share_id" value="${share_id}"/><input type="hidden" name="uk" value="${uk}"/><input type="hidden" name="bdstoken" value="${bdstoken}"/><input type="hidden" name="filesize" value="${filesize}"/>`);
 	$(document.body).append(form); form.submit();
 }
 function OpenDir(path, pwd, share_id, uk, surl) {
@@ -55,4 +65,106 @@ function OpenRoot(surl, pwd){
 	var form = $('<form method="post"></form>');
 	form.append(`<input type="hidden" name="surl" value="${surl}"/><input type="hidden" name="pwd" value="${pwd}"/>`);
 	$(document.body).append(form); form.submit();
+}
+
+// 以下推送到aria2代码来自TkzcM
+function utoa(str) {
+  return window.btoa(unescape(encodeURIComponent(str)));
+}
+// base64 encoded ascii to ucs-2 string
+function atou(str) {
+  return decodeURIComponent(escape(window.atob(str)));
+}
+  function getCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0;i < ca.length;i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+}
+async function checkVer(){
+let token = $('#token').val()
+let aria2url = $('#url').val()
+if(token != ""){
+postVer = JSON.stringify({	
+		  jsonrpc: '2.0',
+		  method: 'aria2.getVersion',
+		  id: 'baiduwp',
+		  params: ['token:'+token]
+		})}else{
+postVer = JSON.stringify({	
+		  jsonrpc: '2.0',
+		  method: 'aria2.getVersion',
+		  id: 'baiduwp',
+		  params: []
+		})}
+const getVer = await fetch(aria2url, {
+body: postVer,
+method: 'POST',
+headers:{'content-type':'text/json'}
+}).catch((error) => {
+  swal('Sorry~','连接aria2失败','error')
+});
+if(await getVer != null)
+	if(await getVer.status === 200)
+	{
+	swal('成功','发现'+JSON.parse(await getVer.text()).result.version+'版aria2，请点击Send','success')
+}
+else{
+	swal('Sorry~','连接aria2失败','error')}
+	}
+async function addUri(){
+let token = $('#token').val()
+let aria2url = $('#url').val()
+// Thanks to acgotaku/BaiduExporter
+const httpurl = $('#http')[0].href
+const httpsurl = $('#https')[0].href
+const headerOption = ['User-Agent: LogStatistic']
+let post
+let postVer
+if(token != ""){//构造post请求
+postVer = JSON.stringify({	
+		  jsonrpc: '2.0',
+		  method: 'aria2.getVersion',
+		  id: 'baiduwp',
+		  params: ['token:'+token]
+		})
+post = JSON.stringify({jsonrpc:'2.0',id:'baiduwp',method:'aria2.addUri',params:["token:"+token,[httpurl,httpsurl],{header:headerOption}]})
+}
+else{
+postVer = JSON.stringify({	
+		  jsonrpc: '2.0',
+		  method: 'aria2.getVersion',
+		  id: 'baiduwp',
+		  params: []
+		})
+post = JSON.stringify({jsonrpc:'2.0',id:'baiduwp',method:'aria2.addUri',params:[[httpurl,httpsurl],{header:headerOption}]})
+}
+const getVer = await fetch(aria2url, {
+body: postVer,
+method: 'POST',
+headers:{'content-type':'text/json'}
+}).catch((error) => {
+  swal('Sorry~','连接aria2失败','error')
+});
+if(await getVer != null)
+	if(await getVer.status === 200)
+	{
+	swal('detected aria2 version '+JSON.parse(await getVer.text()).result.version,'sending request...','success')
+	const sendLink = await fetch(aria2url, { body: post, method: 'POST',headers:{'content-type':'text/json'}}).catch((e)=>{swal('Sorry~',e,'error')})
+	if(await sendLink != null)
+		if(await sendLink.status === 200){
+      swal('成功发送','Good Luck','success')
+      document.cookie = 'aria2url='+utoa(aria2url) // add aria2 config to cookie
+      if(token != "" && token != null){
+        document.cookie = 'aria2token='+utoa(token)
+      }
+    }
+		else{
+	swal('Sorry~','连接aria2失败','error')}
+	}else{
+	swal('Sorry~','连接aria2失败','error')}
 }
